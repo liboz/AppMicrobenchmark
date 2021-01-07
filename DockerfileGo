@@ -1,0 +1,18 @@
+FROM golang:1.15-alpine as build-env
+
+# We copy just the package files first to leverage Docker cache
+COPY go.mod go.sum /app/
+
+WORKDIR /app
+
+RUN go mod download
+
+COPY benchmark.go /app
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o /go/bin/app
+
+# Second step to build minimal image
+FROM scratch
+EXPOSE 8080
+COPY --from=build-env /go/bin/app /go/bin/app
+ENTRYPOINT ["/go/bin/app"]

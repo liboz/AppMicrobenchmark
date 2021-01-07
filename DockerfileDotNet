@@ -1,0 +1,27 @@
+FROM mcr.microsoft.com/dotnet/sdk:5.0.101-alpine3.12-amd64 as build-env
+
+EXPOSE 8080
+
+WORKDIR /app
+
+COPY /CSharp /app
+
+RUN dotnet publish \
+  --runtime alpine-x64 \
+  --self-contained true \
+  /p:PublishTrimmed=true \
+  /p:PublishSingleFile=true \
+  -c Release \
+  -o ./output
+
+# Second step to build minimal image
+FROM mcr.microsoft.com/dotnet/runtime-deps:5.0.1-alpine3.12-amd64
+COPY --from=build-env /app/output .
+
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 \
+  DOTNET_RUNNING_IN_CONTAINER=true \
+  ASPNETCORE_URLS=http://+:8080
+
+EXPOSE 8080
+
+ENTRYPOINT ["./CSharp", "--urls", "http://0.0.0.0:8080"]
